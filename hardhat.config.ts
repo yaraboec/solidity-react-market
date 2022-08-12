@@ -10,9 +10,9 @@ if (!mnemonic) {
   throw new Error("Please set your MNEMONIC in a .env file");
 }
 
-const rinkebyKey: string | undefined = process.env.RINKEBY_PRIVATE_KEY;
-if (!rinkebyKey) {
-  throw new Error("Please set your Rinkeby private key in a .env file");
+const goerliKey: string | undefined = process.env.GOERLI_PRIVATE_KEY;
+if (!goerliKey) {
+  throw new Error("Please set your Goerli private key in a .env file");
 }
 
 const alchemyApiKey: string | undefined = process.env.ALCHEMY_API_KEY;
@@ -24,7 +24,6 @@ export const chainIds = {
   localhost: 31337,
   hardhat: 31337,
   mainnet: 1,
-  rinkeby: 4,
 };
 
 const config: HardhatUserConfig = {
@@ -45,9 +44,9 @@ const config: HardhatUserConfig = {
       },
       chainId: chainIds.hardhat,
     },
-    rinkeby: {
-      url: `https://eth-rinkeby.alchemyapi.io/v2/${alchemyApiKey}`,
-      accounts: [rinkebyKey],
+    goerli: {
+      url: `https://eth-goerli.g.alchemy.com/v2/${alchemyApiKey}`,
+      accounts: [goerliKey],
     },
   },
   mocha: {
