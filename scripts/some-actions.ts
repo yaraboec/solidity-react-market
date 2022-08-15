@@ -10,29 +10,36 @@ async function mintAndList() {
 
   if (!marketAccount || !nftAccount) return;
 
-  const nftMarketplaceContract = await ethers.getContractAt(
+  const marketplaceContract = await ethers.getContractAt(
     "NftMarketplace",
     marketAccount
   );
-  const basicNftContract = await ethers.getContractAt("Nft", nftAccount);
+  const nftContract = await ethers.getContractAt("Nft", nftAccount);
 
   console.log(`Minting NFT for ${owner.address}`);
-  const mintTx = await basicNftContract.connect(owner).mintNft();
+  const mintTx = await nftContract
+    .connect(owner)
+    .mint(
+      owner.address,
+      "ipfs://bafybeig37ioir76s7mg5oobetncojcm3c3hxasyd4rvid4jqhy4gkaheg4/?filename=0-PUG.json"
+    );
   const mintTxReceipt = await mintTx.wait(1);
 
   if (mintTxReceipt.events && mintTxReceipt.events[0].args) {
     const tokenId = mintTxReceipt.events[0]?.args.tokenId;
 
     console.log("Approving Marketplace as operator of NFT...");
-    const approvalTx = await basicNftContract
+    const approvalTx = await nftContract
       .connect(owner)
-      .approve(nftMarketplaceContract.address, tokenId);
+      .approve(marketplaceContract.address, tokenId);
     await approvalTx.wait(1);
 
-    console.log("Listing NFT...");
-    const tx = await nftMarketplaceContract
+    const tx = await marketplaceContract
       .connect(owner)
-      .listItem(basicNftContract.address, tokenId, PRICE);
+      .addSale(nftContract.address, tokenId, PRICE, {
+        from: owner.address,
+        gasLimit: 1000000,
+      });
     await tx.wait(1);
     console.log("NFT Listed with token ID: ", tokenId.toString());
   }

@@ -3,174 +3,174 @@ pragma solidity ^0.8.7;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-
-error PriceNotMet(address nftAddress, uint256 tokenId, uint256 price);
-error ItemNotForSale(address nftAddress, uint256 tokenId);
-error NotListed(address nftAddress, uint256 tokenId);
-error AlreadyListed(address nftAddress, uint256 tokenId);
-error NoProceeds();
-error NotOwner();
-error NotApprovedForMarketplace();
-error PriceMustBeAboveZero();
+import "@openzeppelin/contracts/utils/Counters.sol";
 
 contract NftMarketplace is ReentrancyGuard {
-    struct Listing {
+    using Counters for Counters.Counter;
+
+    struct Sale {
         uint256 price;
         address seller;
+        uint256 tokenId;
     }
 
-    event ItemListed(
+    event SaleUpdated(uint256 indexed tokenId, uint256 indexed price);
+
+    event SaleAdded(
         address indexed seller,
         address indexed nftAddress,
         uint256 indexed tokenId,
         uint256 price
     );
 
-    event ItemCanceled(
-        address indexed seller,
-        address indexed nftAddress,
-        uint256 indexed tokenId
-    );
+    event SaleRemoved(uint256 indexed tokenId);
 
-    event ItemBought(
+    event TokenPurchased(
         address indexed buyer,
-        address indexed nftAddress,
         uint256 indexed tokenId,
         uint256 price
     );
 
-    mapping(address => mapping(uint256 => Listing)) private s_listings;
-    mapping(address => uint256) private s_proceeds;
+    Counters.Counter private _salesAmount;
+    uint256[] saleIds;
+    mapping(uint256 => Sale) private sales;
+    mapping(address => uint256[]) private salesByOwner;
 
-    modifier notListed(
-        address nftAddress,
-        uint256 tokenId,
-        address owner
-    ) {
-        Listing memory listing = s_listings[nftAddress][tokenId];
+    modifier notOnSale(address nftAddress, uint256 tokenId) {
+        Sale memory sale = sales[tokenId];
 
-        if (listing.price > 0) {
-            revert AlreadyListed(nftAddress, tokenId);
-        }
+        require(sale.price == 0, "Sale must not be listed.");
         _;
     }
 
-    modifier isOwner(
-        address nftAddress,
-        uint256 tokenId,
-        address spender
-    ) {
+    modifier isOwner(address nftAddress, uint256 tokenId) {
         IERC721 nft = IERC721(nftAddress);
         address owner = nft.ownerOf(tokenId);
 
-        if (spender != owner) {
-            revert NotOwner();
-        }
+        require(msg.sender == owner, "Only owner can call this method.");
         _;
     }
 
-    modifier isListed(address nftAddress, uint256 tokenId) {
-        Listing memory listing = s_listings[nftAddress][tokenId];
+    modifier isOnSale(address nftAddress, uint256 tokenId) {
+        Sale memory sale = sales[tokenId];
 
-        if (listing.price <= 0) {
-            revert NotListed(nftAddress, tokenId);
-        }
+        require(sale.price > 0, "Sale must be listed.");
         _;
     }
 
-    function listItem(
+    modifier NotZeroPrice(uint256 price) {
+        require(price > 0, "Price must be greater than 0.");
+        _;
+    }
+
+    function addSale(
         address nftAddress,
         uint256 tokenId,
         uint256 price
     )
         external
-        notListed(nftAddress, tokenId, msg.sender)
-        isOwner(nftAddress, tokenId, msg.sender)
+        notOnSale(nftAddress, tokenId)
+        isOwner(nftAddress, tokenId)
+        NotZeroPrice(price)
     {
-        if (price <= 0) {
-            revert PriceMustBeAboveZero();
-        }
         IERC721 nft = IERC721(nftAddress);
 
-        if (nft.getApproved(tokenId) != address(this)) {
-            revert NotApprovedForMarketplace();
-        }
-        s_listings[nftAddress][tokenId] = Listing(price, msg.sender);
+        require(
+            nft.getApproved(tokenId) == address(this),
+            "Market must be approved on nft."
+        );
 
-        emit ItemListed(msg.sender, nftAddress, tokenId, price);
+        sales[tokenId] = Sale(price, msg.sender, tokenId);
+        salesByOwner[msg.sender].push(tokenId);
+        saleIds.push(tokenId);
+        _salesAmount.increment();
+
+        emit SaleAdded(msg.sender, nftAddress, tokenId, price);
     }
 
-    function cancelListing(address nftAddress, uint256 tokenId)
+    function removeSale(address nftAddress, uint256 tokenId)
         external
-        isOwner(nftAddress, tokenId, msg.sender)
-        isListed(nftAddress, tokenId)
+        isOwner(nftAddress, tokenId)
+        isOnSale(nftAddress, tokenId)
     {
-        delete (s_listings[nftAddress][tokenId]);
+        delete (sales[tokenId]);
+        delete (saleIds[tokenId]);
+        delete (salesByOwner[msg.sender][tokenId]);
+        _salesAmount.decrement();
 
-        emit ItemCanceled(msg.sender, nftAddress, tokenId);
+        emit SaleRemoved(tokenId);
     }
 
-    function buyItem(address nftAddress, uint256 tokenId)
+    function tokenPurchase(address nftAddress, uint256 tokenId)
         external
         payable
-        isListed(nftAddress, tokenId)
+        isOnSale(nftAddress, tokenId)
         nonReentrant
     {
-        Listing memory listedItem = s_listings[nftAddress][tokenId];
+        Sale memory sale = sales[tokenId];
 
-        if (msg.value < listedItem.price) {
-            revert PriceNotMet(nftAddress, tokenId, listedItem.price);
-        }
+        require(msg.value == sale.price, "Deposit must equals sale price.");
 
-        s_proceeds[listedItem.seller] += msg.value;
-        delete (s_listings[nftAddress][tokenId]);
-        IERC721(nftAddress).safeTransferFrom(
-            listedItem.seller,
-            msg.sender,
-            tokenId
-        );
-        emit ItemBought(msg.sender, nftAddress, tokenId, listedItem.price);
+        delete (sales[tokenId]);
+        delete (saleIds[tokenId]);
+        delete (salesByOwner[msg.sender][tokenId]);
+        _salesAmount.decrement();
+
+        IERC721(nftAddress).safeTransferFrom(sale.seller, msg.sender, tokenId);
+
+        (bool success, ) = payable(msg.sender).call{value: sale.price}("");
+        require(success, "Transfer failed");
+
+        emit TokenPurchased(msg.sender, tokenId, sale.price);
     }
 
-    function updateListing(
+    function updateSale(
         address nftAddress,
         uint256 tokenId,
         uint256 newPrice
     )
         external
-        isListed(nftAddress, tokenId)
+        isOnSale(nftAddress, tokenId)
         nonReentrant
-        isOwner(nftAddress, tokenId, msg.sender)
+        isOwner(nftAddress, tokenId)
+        NotZeroPrice(newPrice)
     {
-        if (newPrice == 0) {
-            revert PriceMustBeAboveZero();
-        }
+        sales[tokenId].price = newPrice;
 
-        s_listings[nftAddress][tokenId].price = newPrice;
-        emit ItemListed(msg.sender, nftAddress, tokenId, newPrice);
+        emit SaleUpdated(tokenId, newPrice);
     }
 
-    function getListing(address nftAddress, uint256 tokenId)
+    function getSale(uint256 tokenId) internal view returns (Sale memory) {
+        return sales[tokenId];
+    }
+
+    function getSales() external view returns (Sale[] memory) {
+        Sale[] memory allSales = new Sale[](_salesAmount.current());
+
+        for (uint256 i = 0; i < _salesAmount.current(); i++) {
+            if (saleIds[i] >= 0) {
+                allSales[i] = getSale(saleIds[i]);
+            }
+        }
+
+        return allSales;
+    }
+
+    function getSalesByOwner(address owner)
         external
         view
-        returns (Listing memory)
+        returns (Sale[] memory)
     {
-        return s_listings[nftAddress][tokenId];
-    }
+        uint256[] memory ownerSalesIds = salesByOwner[owner];
 
-    function getProceeds(address seller) external view returns (uint256) {
-        return s_proceeds[seller];
-    }
+        Sale[] memory ownerSales = new Sale[](ownerSalesIds.length);
 
-    function withdrawProceeds() external {
-        uint256 proceeds = s_proceeds[msg.sender];
-
-        if (proceeds <= 0) {
-            revert NoProceeds();
+        for (uint256 i; i < ownerSalesIds.length; i++) {
+            if (ownerSalesIds[i] >= 0) {
+                ownerSales[i] = getSale(ownerSalesIds[i]);
+            }
         }
-        s_proceeds[msg.sender] = 0;
 
-        (bool success, ) = payable(msg.sender).call{value: proceeds}("");
-        require(success, "Transfer failed");
+        return ownerSales;
     }
 }
