@@ -1,13 +1,10 @@
-import { Nft } from "../typechain-types";
-import { NftMarketplace } from "../typechain-types";
 import { callFailedFunction, deployContract, mintTokens } from "./utils";
-import { PANIC_CODES } from "@nomicfoundation/hardhat-chai-matchers/panic";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { expect, use } from "chai";
-import chai from "chai";
+import chai, { expect } from "chai";
 import { BigNumber, BigNumberish } from "ethers";
 import { ethers } from "hardhat";
 import { jestSnapshotPlugin } from "mocha-chai-jest-snapshot";
+import { Nft, NftMarketplace } from "../typechain-types";
 
 chai.use(jestSnapshotPlugin());
 
