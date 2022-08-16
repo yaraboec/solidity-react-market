@@ -4,6 +4,7 @@ pragma solidity ^0.8.7;
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
+import {removeArrayElement} from "./utils.sol";
 
 contract NftMarketplace is ReentrancyGuard {
     using Counters for Counters.Counter;
@@ -39,7 +40,7 @@ contract NftMarketplace is ReentrancyGuard {
     modifier notOnSale(address nftAddress, uint256 tokenId) {
         Sale memory sale = sales[tokenId];
 
-        require(sale.price == 0, "Sale must not be listed.");
+        require(sale.price == 0, "Sale already exists.");
         _;
     }
 
@@ -47,7 +48,10 @@ contract NftMarketplace is ReentrancyGuard {
         IERC721 nft = IERC721(nftAddress);
         address owner = nft.ownerOf(tokenId);
 
-        require(msg.sender == owner, "Only owner can call this method.");
+        require(
+            msg.sender == owner,
+            "Only owner of token can call this method."
+        );
         _;
     }
 
@@ -81,8 +85,8 @@ contract NftMarketplace is ReentrancyGuard {
         );
 
         sales[tokenId] = Sale(price, msg.sender, tokenId);
-        salesByOwner[msg.sender].push(tokenId);
         saleIds.push(tokenId);
+        salesByOwner[msg.sender].push(tokenId);
         _salesAmount.increment();
 
         emit SaleAdded(msg.sender, nftAddress, tokenId, price);
@@ -94,8 +98,8 @@ contract NftMarketplace is ReentrancyGuard {
         isOnSale(nftAddress, tokenId)
     {
         delete (sales[tokenId]);
-        delete (saleIds[tokenId]);
-        delete (salesByOwner[msg.sender][tokenId]);
+        removeArrayElement(tokenId, saleIds);
+        removeArrayElement(tokenId, salesByOwner[msg.sender]);
         _salesAmount.decrement();
 
         emit SaleRemoved(tokenId);
@@ -112,8 +116,8 @@ contract NftMarketplace is ReentrancyGuard {
         require(msg.value == sale.price, "Deposit must equals sale price.");
 
         delete (sales[tokenId]);
-        delete (saleIds[tokenId]);
-        delete (salesByOwner[msg.sender][tokenId]);
+        removeArrayElement(tokenId, saleIds);
+        removeArrayElement(tokenId, salesByOwner[msg.sender]);
         _salesAmount.decrement();
 
         IERC721(nftAddress).safeTransferFrom(sale.seller, msg.sender, tokenId);
@@ -140,8 +144,12 @@ contract NftMarketplace is ReentrancyGuard {
         emit SaleUpdated(tokenId, newPrice);
     }
 
-    function getSale(uint256 tokenId) internal view returns (Sale memory) {
+    function getSale(uint256 tokenId) public view returns (Sale memory) {
         return sales[tokenId];
+    }
+
+    function getSalesSupply() public view returns (uint256) {
+        return _salesAmount.current();
     }
 
     function getSales() external view returns (Sale[] memory) {

@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import {saveArrayRemove} from "./utils.sol";
+import {removeArrayElement} from "./utils.sol";
 
 contract Nft is ERC721, ERC721Enumerable, ERC721URIStorage, AccessControl {
     struct Token {
@@ -45,11 +45,13 @@ contract Nft is ERC721, ERC721Enumerable, ERC721URIStorage, AccessControl {
     }
 
     function burn(uint256 tokenId) public {
-        require(ownerOf(tokenId) == msg.sender);
+        require(
+            ownerOf(tokenId) == msg.sender,
+            "Only owner of the token can burn it."
+        );
 
         _burn(tokenId);
-
-        delete nftsByOwner[msg.sender][tokenId];
+        removeArrayElement(tokenId, nftsByOwner[msg.sender]);
 
         emit tokenBurned(tokenId);
     }
@@ -65,7 +67,7 @@ contract Nft is ERC721, ERC721Enumerable, ERC721URIStorage, AccessControl {
         uint256[] memory tokenIds = nftsByOwner[owner];
 
         for (uint256 i = 0; i < tokenAmount; i++) {
-            if (tokenIds[i]) {
+            if (tokenIds[i] >= 0) {
                 Token memory currentToken = Token(
                     tokenIds[i],
                     tokenURI(tokenIds[i])

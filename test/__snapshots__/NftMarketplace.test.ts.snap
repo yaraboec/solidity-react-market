@@ -1,0 +1,24 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Marketplace contract Buy sale Sale purchase 1`] = `
+Object {
+  "owner": "0x0000000000000000000000000000000000000000",
+  "price": "0",
+  "tokenId": "0",
+}
+`;
+
+exports[`Marketplace contract Create sale Sale creation 1`] = `
+Object {
+  "price": "100000000000000000",
+  "tokenId": "0",
+}
+`;
+
+exports[`Marketplace contract Remove sale Sale removing 1`] = `
+Object {
+  "owner": "0x0000000000000000000000000000000000000000",
+  "price": "0",
+  "tokenId": "0",
+}
+`;
