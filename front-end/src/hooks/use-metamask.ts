@@ -1,4 +1,4 @@
-import { AlchemyProvider, ExternalProvider } from "@ethersproject/providers";
+import { ExternalProvider, Web3Provider } from "@ethersproject/providers";
 import { ethers } from "ethers";
 import React, { useContext } from "react";
 
@@ -6,7 +6,8 @@ export type MetamaskConnection = {
   nftContract: ethers.Contract;
   marketContract: ethers.Contract;
   ethereum: ExternalProvider;
-  provider: AlchemyProvider;
+  provider: Web3Provider;
+  signer: ethers.providers.JsonRpcSigner;
 };
 
 export const MetamaskContext = React.createContext<MetamaskConnection | null>(

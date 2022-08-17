@@ -21,10 +21,11 @@ export default function App() {
       if (!window.ethereum) return;
       const { ethereum } = window;
 
-      const provider = new ethers.providers.AlchemyProvider(
-        "goerli",
-        process.env.ALCHEMY_API_KEY
-      );
+      const provider = new ethers.providers.Web3Provider(ethereum, "any");
+      await provider.send("eth_requestAccounts", []);
+
+      const signer = provider.getSigner();
+
       const nftContract = new ethers.Contract(
         process.env.REACT_APP_NFT_CONTRACT_ADDRESS ?? "",
         Nft.abi,
@@ -41,6 +42,7 @@ export default function App() {
         marketContract,
         ethereum,
         provider,
+        signer,
       });
     };
 

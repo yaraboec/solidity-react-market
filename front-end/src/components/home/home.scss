@@ -1,0 +1,23 @@
+.marketplace {
+  .sales {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 50px;
+    justify-content: space-between;
+    margin: 50px;
+
+    .sale {
+      display: flex;
+      flex-direction: column;
+      row-gap: 20px;
+      background: aliceblue;
+      padding: 20px;
+      border-radius: 10px;
+
+      button {
+        width: 50%;
+        margin: auto;
+      }
+    }
+  }
+}

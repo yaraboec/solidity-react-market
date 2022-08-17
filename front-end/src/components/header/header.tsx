@@ -11,34 +11,22 @@ import "./header.scss";
 export default function Header() {
   const [user, setUser] = useState<string | null>(null);
   const [userBalance, setUserBalance] = useState<string | null>(null);
+  const [isConnected, setIsConnected] = useState<boolean>(false);
 
-  const { ethereum, provider } = useMetamask();
+  const { signer } = useMetamask();
 
   useEffect(() => {
-    setUser(window.sessionStorage.getItem("user"));
-    setUserBalance(window.sessionStorage.getItem("balance"));
-  }, []);
+    const loadUser = async () => {
+      setUser(await signer.getAddress());
+      setUserBalance(
+        ethers.utils
+          .formatEther((await signer.getBalance()).toString())
+          .slice(0, 10)
+      );
+    };
 
-  const connect = async () => {
-    const accounts = await ethereum.request?.({
-      method: "eth_requestAccounts",
-    });
-    const balance = ethers.utils
-      .formatEther(await provider.getBalance(accounts[0]))
-      .slice(0, 10);
-
-    setUserBalance(balance);
-    setUser(accounts[0]);
-    window.sessionStorage.setItem("user", accounts[0]);
-    window.sessionStorage.setItem("balance", balance);
-  };
-
-  const disconnect = async () => {
-    window.sessionStorage.removeItem("user");
-    window.sessionStorage.removeItem("balance");
-    setUser(null);
-    setUserBalance(null);
-  };
+    loadUser();
+  }, [isConnected]);
 
   const account = () => (
     <div className="account">
@@ -46,10 +34,9 @@ export default function Header() {
         <>
           <span>Account: {user}</span>
           <span>Balance: {userBalance}</span>
-          <Button onClick={disconnect}>Disconnect</Button>
         </>
       ) : (
-        <Button onClick={connect}>Connect</Button>
+        <Button onClick={() => setIsConnected(true)}>Connect</Button>
       )}
     </div>
   );
@@ -64,6 +51,9 @@ export default function Header() {
           <Nav className="me-auto">
             <Nav.Link as={Link} to={ROUTES.HOME}>
               Home
+            </Nav.Link>
+            <Nav.Link as={Link} to={ROUTES.INVENTORY}>
+              Inventory
             </Nav.Link>
           </Nav>
           {account()}
