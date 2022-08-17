@@ -1,0 +1,14 @@
+.header {
+  .account {
+    color: white;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .container.navbar-content {
+    margin-left: 20px;
+    max-width: 100%;
+  }
+}

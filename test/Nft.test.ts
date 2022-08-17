@@ -1,3 +1,4 @@
+import { Nft } from "../typechain-types";
 import {
   callFailedFunction,
   deployContract,
@@ -7,7 +8,6 @@ import {
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { Nft } from "../typechain-types";
 
 describe("Nft contract", () => {
   let NftContract: Nft;
