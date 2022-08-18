@@ -67,7 +67,7 @@ contract Nft is ERC721, ERC721Enumerable, ERC721URIStorage, AccessControl {
         uint256[] memory tokenIds = nftsByOwner[owner];
 
         for (uint256 i = 0; i < tokenAmount; i++) {
-            if (tokenIds[i] >= 0) {
+            if (_exists(tokenIds[i])) {
                 Token memory currentToken = Token(
                     tokenIds[i],
                     tokenURI(tokenIds[i])

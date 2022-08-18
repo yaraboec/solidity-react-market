@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import {removeArrayElement} from "./utils.sol";
+import {Auction} from "./Auction.sol";
 
 contract NftMarketplace is ReentrancyGuard {
     using Counters for Counters.Counter;
@@ -16,31 +17,42 @@ contract NftMarketplace is ReentrancyGuard {
     }
 
     event SaleUpdated(uint256 indexed tokenId, uint256 indexed price);
-
     event SaleAdded(
         address indexed seller,
         address indexed nftAddress,
         uint256 indexed tokenId,
         uint256 price
     );
-
     event SaleRemoved(uint256 indexed tokenId);
-
     event TokenPurchased(
         address indexed buyer,
         uint256 indexed tokenId,
         uint256 price
     );
+    event AuctionCreated(
+        address auctionContract,
+        address owner,
+        uint256 tokenId
+    );
 
     Counters.Counter private _salesAmount;
     uint256[] saleIds;
+    address[] auctions;
     mapping(uint256 => Sale) private sales;
     mapping(address => uint256[]) private salesByOwner;
+    mapping(uint256 => address) private auctionsByTokens;
 
-    modifier notOnSale(address nftAddress, uint256 tokenId) {
+    modifier notOnSale(uint256 tokenId) {
         Sale memory sale = sales[tokenId];
 
         require(sale.price == 0, "Sale already exists.");
+        _;
+    }
+
+    modifier notOnAuction(uint256 tokenId) {
+        address auction = auctionsByTokens[tokenId];
+
+        require(auction == address(0), "Auction already exists.");
         _;
     }
 
@@ -55,7 +67,7 @@ contract NftMarketplace is ReentrancyGuard {
         _;
     }
 
-    modifier isOnSale(address nftAddress, uint256 tokenId) {
+    modifier isOnSale(uint256 tokenId) {
         Sale memory sale = sales[tokenId];
 
         require(sale.price > 0, "Sale must be listed.");
@@ -73,7 +85,8 @@ contract NftMarketplace is ReentrancyGuard {
         uint256 price
     )
         external
-        notOnSale(nftAddress, tokenId)
+        notOnSale(tokenId)
+        notOnAuction(tokenId)
         isOwner(nftAddress, tokenId)
         NotZeroPrice(price)
     {
@@ -92,10 +105,36 @@ contract NftMarketplace is ReentrancyGuard {
         emit SaleAdded(msg.sender, nftAddress, tokenId, price);
     }
 
+    function addAuction(
+        address nftAddress,
+        uint256 tokenId,
+        uint256 duration,
+        uint256 initialBid
+    )
+        external
+        isOwner(nftAddress, tokenId)
+        notOnSale(tokenId)
+        notOnAuction(tokenId)
+    {
+        Auction auction = new Auction(
+            msg.sender,
+            tokenId,
+            duration,
+            initialBid
+        );
+
+        address auctionAddress = address(auction);
+
+        auctions.push(auctionAddress);
+        auctionsByTokens[tokenId] = auctionAddress;
+
+        emit AuctionCreated(auctionAddress, msg.sender, tokenId);
+    }
+
     function removeSale(address nftAddress, uint256 tokenId)
         external
         isOwner(nftAddress, tokenId)
-        isOnSale(nftAddress, tokenId)
+        isOnSale(tokenId)
     {
         delete (sales[tokenId]);
         removeArrayElement(tokenId, saleIds);
@@ -108,12 +147,16 @@ contract NftMarketplace is ReentrancyGuard {
     function tokenPurchase(address nftAddress, uint256 tokenId)
         external
         payable
-        isOnSale(nftAddress, tokenId)
+        isOnSale(tokenId)
         nonReentrant
     {
         Sale memory sale = sales[tokenId];
 
         require(msg.value == sale.price, "Deposit must equals sale price.");
+        require(
+            msg.sender != sale.seller,
+            "You can not purchase your own sale."
+        );
 
         delete (sales[tokenId]);
         removeArrayElement(tokenId, saleIds);
@@ -122,7 +165,7 @@ contract NftMarketplace is ReentrancyGuard {
 
         IERC721(nftAddress).safeTransferFrom(sale.seller, msg.sender, tokenId);
 
-        (bool success, ) = payable(msg.sender).call{value: sale.price}("");
+        (bool success, ) = payable(sale.seller).call{value: sale.price}("");
         require(success, "Transfer failed");
 
         emit TokenPurchased(msg.sender, tokenId, sale.price);
@@ -134,7 +177,7 @@ contract NftMarketplace is ReentrancyGuard {
         uint256 newPrice
     )
         external
-        isOnSale(nftAddress, tokenId)
+        isOnSale(tokenId)
         nonReentrant
         isOwner(nftAddress, tokenId)
         NotZeroPrice(newPrice)
@@ -157,7 +200,11 @@ contract NftMarketplace is ReentrancyGuard {
 
         for (uint256 i = 0; i < _salesAmount.current(); i++) {
             if (saleIds[i] >= 0) {
-                allSales[i] = getSale(saleIds[i]);
+                Sale memory sale = getSale(saleIds[i]);
+
+                if (sale.price > 0) {
+                    allSales[i] = sale;
+                }
             }
         }
 
@@ -175,10 +222,18 @@ contract NftMarketplace is ReentrancyGuard {
 
         for (uint256 i; i < ownerSalesIds.length; i++) {
             if (ownerSalesIds[i] >= 0) {
-                ownerSales[i] = getSale(ownerSalesIds[i]);
+                Sale memory sale = getSale(ownerSalesIds[i]);
+
+                if (sale.price > 0) {
+                    ownerSales[i] = sale;
+                }
             }
         }
 
         return ownerSales;
+    }
+
+    function getAuctions() external view returns (address[] memory) {
+        return auctions;
     }
 }
