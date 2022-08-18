@@ -12,7 +12,7 @@ export default function Home() {
   const [sales, setSales] = useState<Sale[]>([]);
 
   const { isLoading, runAsyncAction } = useAsyncAction();
-  const { marketContract, provider, nftContract } = useMetamask();
+  const { marketContract, provider, nftContract, signer } = useMetamask();
 
   useEffect(() => {
     loadSales();
@@ -25,10 +25,6 @@ export default function Home() {
   };
 
   const handleBuy = async (tokenId: string, price: BigNumber) => {
-    await provider.send("eth_requestAccounts", []);
-
-    const signer = provider.getSigner();
-
     if (signer) {
       runAsyncAction(async () => {
         await marketContract

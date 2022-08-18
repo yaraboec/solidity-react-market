@@ -1,0 +1,33 @@
+.inventory {
+  .token-title {
+    text-align: center;
+    margin-top: 20px;
+  }
+
+  .tokens,
+  .sales {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 50px;
+    justify-content: space-between;
+    margin: 50px;
+    background-color: antiquewhite;
+    padding: 50px;
+    border-radius: 10px;
+
+    .token,
+    .sale {
+      display: flex;
+      flex-direction: column;
+      row-gap: 20px;
+      background: aliceblue;
+      padding: 20px;
+      border-radius: 10px;
+
+      button {
+        width: 50%;
+        margin: auto;
+      }
+    }
+  }
+}
