@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/common/ERC2981.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "./@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import {removeArrayElement} from "./utils.sol";
 
 contract Nft is
@@ -92,6 +92,18 @@ contract Nft is
         return ownerTokens;
     }
 
+    function _setRoyalties(address newRecipient) internal {
+        require(
+            newRecipient != address(0),
+            "Royalties: new recipient is the zero address"
+        );
+        _recipient = newRecipient;
+    }
+
+    function setRoyalties(address newRecipient) external onlyOwner {
+        _setRoyalties(newRecipient);
+    }
+
     function tokenURI(uint256 tokenId)
         public
         view
@@ -108,7 +120,7 @@ contract Nft is
         uint256 tokenId
     ) public override(ERC721, IERC721) {
         require(_isApprovedOrOwner(_msgSender(), tokenId));
-        _payRoyalty(from, to);
+        _payRoyalty();
         _transfer(from, to, tokenId);
     }
 
@@ -117,7 +129,7 @@ contract Nft is
         address to,
         uint256 tokenId
     ) public override(ERC721, IERC721) {
-        _payRoyalty(from, to);
+        _payRoyalty();
         safeTransferFrom(from, to, tokenId);
     }
 
@@ -128,7 +140,7 @@ contract Nft is
         bytes memory _data
     ) public override(ERC721, IERC721) {
         require(_isApprovedOrOwner(_msgSender(), tokenId));
-        _payRoyalty(from, to);
+        _payRoyalty();
         _safeTransfer(from, to, tokenId, _data);
     }
 
@@ -141,7 +153,7 @@ contract Nft is
         return (_recipient, (_salePrice * 1000) / 10000);
     }
 
-    function _payRoyalty(address from) internal {
+    function _payRoyalty() internal {
         (bool success, ) = payable(_recipient).call{value: 10000}("");
         require(success, "Transfer failed");
     }
