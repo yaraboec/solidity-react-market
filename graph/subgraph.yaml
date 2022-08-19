@@ -1,0 +1,25 @@
+specVersion: 0.0.4
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum
+    name: Nft
+    network: goerli
+    source:
+      address: "0xd4cf0eAa7da1b458893f1b891F1178af4a54BC69"
+      abi: Nft
+      startBlock: 7432966
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.5
+      language: wasm/assemblyscript
+      entities:
+        - Nft
+        - User
+      abis:
+        - name: Nft
+          file: ./abis/Nft.json
+      eventHandlers:
+        - event: Transfer(indexed address,indexed address,indexed uint256)
+          handler: handleTransfer
+      file: ./src/nft.ts

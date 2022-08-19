@@ -20,9 +20,6 @@ contract Nft is
         string tokenURI;
     }
 
-    event tokenMinted(uint256 indexed tokenId);
-    event tokenBurned(uint256 indexed tokenId);
-
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
     mapping(address => uint256[]) private nftsByOwner;
@@ -49,8 +46,6 @@ contract Nft is
         _setTokenURI(tokenIndex, _uri);
 
         nftsByOwner[tokenOwner].push(tokenIndex);
-
-        emit tokenMinted(tokenIndex);
     }
 
     function burn(uint256 tokenId) public {
@@ -61,8 +56,6 @@ contract Nft is
 
         _burn(tokenId);
         removeArrayElement(tokenId, nftsByOwner[msg.sender]);
-
-        emit tokenBurned(tokenId);
     }
 
     function getNftsByOwner(address owner)

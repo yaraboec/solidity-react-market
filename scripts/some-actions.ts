@@ -26,9 +26,11 @@ async function mintAndList() {
   const mintTxReceipt = await mintTx.wait(1);
 
   if (mintTxReceipt.events && mintTxReceipt.events[0].args) {
-    const tokenId = mintTxReceipt.events[0]?.args.tokenId;
+    const tokenId = mintTxReceipt.events[0]?.args;
 
-    console.log("Approving Marketplace as operator of NFT...");
+    console.log(tokenId);
+
+    /* console.log("Approving Marketplace as operator of NFT...");
     const approvalTx = await nftContract
       .connect(owner)
       .approve(marketplaceContract.address, tokenId);
@@ -41,7 +43,7 @@ async function mintAndList() {
         gasLimit: 1000000,
       });
     await tx.wait(1);
-    console.log("NFT Listed with token ID: ", tokenId.toString());
+    console.log("NFT Listed with token ID: ", tokenId.toString()); */
   }
 }
 
