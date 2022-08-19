@@ -2,6 +2,14 @@ type Token @entity {
   id: ID!
   owner: User!
   ownerId: String!
+  sale: Sale @derivedFrom(field: "token")
+}
+
+type Sale @entity {
+  id: ID!
+  token: Token!
+  price: BigInt!
+  contractId: String!
 }
 
 type User @entity {

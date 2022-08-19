@@ -23,3 +23,28 @@ dataSources:
         - event: Transfer(indexed address,indexed address,indexed uint256)
           handler: handleTransfer
       file: ./src/nft.ts
+  - kind: ethereum
+    name: NftMarketplace
+    network: goerli
+    source:
+      address: "0xEd50CDCFf2bfBA6698aC758BCF7e6Dc17cf64293"
+      abi: NftMarketplace
+      startBlock: 7432283
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.5
+      language: wasm/assemblyscript
+      entities:
+        - Sale
+        - User
+      abis:
+        - name: NftMarketplace
+          file: ./abis/NftMarketplace.json
+      eventHandlers:
+        - event: SaleAdded(indexed address,indexed address,indexed uint256,uint256)
+          handler: handleSaleAdd
+        - event: SaleRemoved(indexed uint256)
+          handler: handleSaleRemove
+        - event: TokenPurchased(indexed address,indexed uint256,uint256)
+          handler: handleSalePurchase
+      file: ./src/marketplace.ts
