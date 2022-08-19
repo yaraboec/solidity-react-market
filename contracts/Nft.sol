@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/common/ERC2981.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 import {removeArrayElement} from "./utils.sol";
 
 contract Nft is
@@ -14,7 +13,6 @@ contract Nft is
     ERC721Enumerable,
     ERC721URIStorage,
     ERC2981,
-    Ownable,
     AccessControl
 {
     struct Token {
@@ -27,13 +25,12 @@ contract Nft is
 
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
-    address private _recipient;
     mapping(address => uint256[]) private nftsByOwner;
 
     constructor() ERC721("Yara", "YToken") {
         _setupRole(MINTER_ROLE, msg.sender);
 
-        _recipient = msg.sender;
+        _setDefaultRoyalty(msg.sender, 10000);
     }
 
     modifier isExists(uint256 tokenId) {
@@ -92,18 +89,6 @@ contract Nft is
         return ownerTokens;
     }
 
-    function _setRoyalties(address newRecipient) internal {
-        require(
-            newRecipient != address(0),
-            "Royalties: new recipient is the zero address"
-        );
-        _recipient = newRecipient;
-    }
-
-    function setRoyalties(address newRecipient) external onlyOwner {
-        _setRoyalties(newRecipient);
-    }
-
     function tokenURI(uint256 tokenId)
         public
         view
@@ -112,50 +97,6 @@ contract Nft is
         returns (string memory)
     {
         return super.tokenURI(tokenId);
-    }
-
-    function transferFrom(
-        address from,
-        address to,
-        uint256 tokenId
-    ) public override(ERC721, IERC721) {
-        require(_isApprovedOrOwner(_msgSender(), tokenId));
-        _payRoyalty();
-        _transfer(from, to, tokenId);
-    }
-
-    function safeTransferFrom(
-        address from,
-        address to,
-        uint256 tokenId
-    ) public override(ERC721, IERC721) {
-        _payRoyalty();
-        safeTransferFrom(from, to, tokenId);
-    }
-
-    function safeTransferFrom(
-        address from,
-        address to,
-        uint256 tokenId,
-        bytes memory _data
-    ) public override(ERC721, IERC721) {
-        require(_isApprovedOrOwner(_msgSender(), tokenId));
-        _payRoyalty();
-        _safeTransfer(from, to, tokenId, _data);
-    }
-
-    function royaltyInfo(uint256 _tokenId, uint256 _salePrice)
-        public
-        view
-        override
-        returns (address receiver, uint256 royaltyAmount)
-    {
-        return (_recipient, (_salePrice * 1000) / 10000);
-    }
-
-    function _payRoyalty() internal {
-        (bool success, ) = payable(_recipient).call{value: 10000}("");
-        require(success, "Transfer failed");
     }
 
     function supportsInterface(bytes4 interfaceId)
