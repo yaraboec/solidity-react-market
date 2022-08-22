@@ -1,28 +1,48 @@
 import { useEffect, useState } from "react";
 import { Button } from "react-bootstrap";
 import { BigNumber, ethers } from "ethers";
+import { useQuery, gql } from "@apollo/client";
 
 import { useMetamask } from "hooks/use-metamask";
 import { useAsyncAction } from "hooks/use-async-action";
-import { Sale } from "types/sale";
+import { SaleGraph } from "types/sale";
 
 import "./home.scss";
 
 export default function Home() {
-  const [sales, setSales] = useState<Sale[]>([]);
+  const [marketSales, setMarketSales] = useState<SaleGraph[]>([]);
 
   const { isLoading, runAsyncAction } = useAsyncAction();
-  const { marketContract, provider, nftContract, signer } = useMetamask();
+  const { marketContract, nftContract, signer } = useMetamask();
+
+  const { loading, error, data } = useQuery(
+    gql`
+      query ($first: Int) {
+        sales(first: $first) {
+          id
+          token {
+            ownerId
+          }
+          price
+        }
+      }
+    `,
+    {
+      variables: { first: 100 },
+    }
+  );
+
+  if (error) {
+    console.log(error.message);
+  }
 
   useEffect(() => {
-    loadSales();
-  }, []);
+    if (data) {
+      const { sales }: { sales: SaleGraph[] } = data;
 
-  const loadSales = async () => {
-    runAsyncAction(async () => {
-      setSales(await marketContract.callStatic.getSales());
-    });
-  };
+      setMarketSales(sales);
+    }
+  }, [data]);
 
   const handleBuy = async (tokenId: string, price: BigNumber) => {
     if (signer) {
@@ -36,18 +56,16 @@ export default function Home() {
 
   const getSales = () => (
     <div>
-      {!sales.length ? (
+      {!marketSales.length ? (
         <div className="empty">No available sales.</div>
       ) : (
         <div className="sales">
-          {sales.map((sale) => (
-            <div key={sale[2].toString()} className="sale">
-              <span>Id: {sale[2].toString()}</span>
-              <span>Owner: {sale[1]}</span>
-              <span>Price: {ethers.utils.formatEther(sale[0].toString())}</span>
-              <Button
-                onClick={async () => handleBuy(sale[2].toString(), sale[0])}
-              >
+          {marketSales.map((sale) => (
+            <div key={sale.id} className="sale">
+              <span>Id: {sale.id}</span>
+              <span>Owner: {sale.token.ownerId}</span>
+              <span>Price: {ethers.utils.formatEther(sale.price)}</span>
+              <Button onClick={async () => handleBuy(sale.id, sale.price)}>
                 Buy
               </Button>
             </div>
@@ -59,7 +77,7 @@ export default function Home() {
 
   return (
     <div className="marketplace">
-      {isLoading ? <div>Loading...</div> : getSales()}
+      {isLoading || loading ? <div>Loading...</div> : getSales()}
     </div>
   );
 }

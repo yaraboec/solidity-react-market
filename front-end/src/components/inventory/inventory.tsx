@@ -1,39 +1,64 @@
 import { useState, useEffect } from "react";
-
-import { useMetamask } from "hooks/use-metamask";
-import { useAsyncAction } from "hooks/use-async-action";
-import { Token } from "types/nft";
-import { Sale } from "types/sale";
-
-import "./inventory.scss";
+import { useQuery, gql } from "@apollo/client";
 import { ethers } from "ethers";
 import { Button } from "react-bootstrap";
 
+import { useMetamask } from "hooks/use-metamask";
+import { useAsyncAction } from "hooks/use-async-action";
+import { TokenGraph } from "types/nft";
+import { SaleGraph } from "types/sale";
+
+import "./inventory.scss";
+
 export default function Inventory() {
-  const [tokens, setTokens] = useState<Token[]>([]);
-  const [tokensSales, setTokensSales] = useState<Sale[]>([]);
+  const [userTokens, setUserTokens] = useState<TokenGraph[]>([]);
+  const [tokensSales, setTokensSales] = useState<SaleGraph[]>([]);
+  const [user, setUser] = useState<string | null>(null);
 
   const { isLoading, runAsyncAction } = useAsyncAction();
   const { marketContract, nftContract, signer } = useMetamask();
 
-  useEffect(() => {
-    loadTokens();
-  }, []);
+  const { loading, error, data } = useQuery(
+    gql`
+      query ($first: Int, $owner: String) {
+        tokens(first: $first, where: { ownerId: $owner }) {
+          id
+        }
+        sales(first: $first, where: { token_: { ownerId: $owner } }) {
+          id
+          token {
+            ownerId
+          }
+          price
+        }
+      }
+    `,
+    {
+      variables: { first: 100, owner: user?.toLowerCase() },
+    }
+  );
 
-  const loadTokens = async () => {
-    runAsyncAction(async () => {
-      setTokens(
-        await nftContract.callStatic.getNftsByOwner(await signer.getAddress())
-      );
-    });
-    runAsyncAction(async () => {
-      setTokensSales(
-        await marketContract.callStatic.getSalesByOwner(
-          await signer.getAddress()
-        )
-      );
-    });
-  };
+  if (error) {
+    console.log(error.message);
+  }
+
+  useEffect(() => {
+    if (data) {
+      const { sales, tokens }: { sales: SaleGraph[]; tokens: TokenGraph[] } =
+        data;
+
+      setUserTokens(tokens);
+      setTokensSales(sales);
+    }
+  }, [data]);
+
+  useEffect(() => {
+    const loadUser = async () => {
+      setUser(await signer.getAddress());
+    };
+
+    loadUser();
+  }, []);
 
   const handleSaleRemove = (tokenId: string) => {
     runAsyncAction(async () => {
@@ -70,19 +95,16 @@ export default function Inventory() {
 
   const getTokens = () => (
     <div>
-      {!tokens.length && !tokensSales.length ? (
+      {!userTokens.length && !tokensSales.length ? (
         <div className="empty">No available sales.</div>
       ) : (
         <>
           <h3 className="token-title">Owned tokens</h3>
           <div className="tokens">
-            {tokens.map((token) => (
-              <div key={token[0].toString()} className="token">
-                <span>Id: {token[0].toString()}</span>
-                <span>URI: {token[1].toString()}</span>
-                <Button
-                  onClick={async () => handleAddSale(token[0].toString())}
-                >
+            {userTokens.map((token) => (
+              <div key={token.id} className="token">
+                <span>Id: {token.id}</span>
+                <Button onClick={async () => handleAddSale(token.id)}>
                   Sell
                 </Button>
               </div>
@@ -91,15 +113,11 @@ export default function Inventory() {
           <h3 className="token-title">Owned sales</h3>
           <div className="sales">
             {tokensSales.map((sale) => (
-              <div key={sale[2].toString()} className="sale">
-                <span>Id: {sale[2].toString()}</span>
-                <span>Owner: {sale[1]}</span>
-                <span>
-                  Price: {ethers.utils.formatEther(sale[0].toString())}
-                </span>
-                <Button
-                  onClick={async () => handleSaleRemove(sale[2].toString())}
-                >
+              <div key={sale.id} className="sale">
+                <span>Id: {sale.id}</span>
+                <span>Owner: {sale.token.ownerId}</span>
+                <span>Price: {ethers.utils.formatEther(sale.price)}</span>
+                <Button onClick={async () => handleSaleRemove(sale.id)}>
                   Remove sale
                 </Button>
               </div>
@@ -112,7 +130,7 @@ export default function Inventory() {
 
   return (
     <div className="inventory">
-      {isLoading ? <div>Loading...</div> : getTokens()}
+      {isLoading || loading ? <div>Loading...</div> : getTokens()}
     </div>
   );
 }
