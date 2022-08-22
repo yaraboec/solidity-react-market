@@ -1,11 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
 
+import "hardhat/console.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/common/ERC2981.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/metatx/ERC2771Context.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
 import {removeArrayElement} from "./utils.sol";
 
 contract Nft is
@@ -13,6 +17,7 @@ contract Nft is
     ERC721Enumerable,
     ERC721URIStorage,
     ERC2981,
+    EIP712,
     AccessControl
 {
     struct Token {
@@ -20,13 +25,20 @@ contract Nft is
         string tokenURI;
     }
 
+    struct LazyNFT {
+        uint256 mintPrice;
+        string uri;
+        bytes signature;
+    }
+
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    string private constant SIGN_DOMAIN = "YaraToken";
+    string private constant SIGN_VERSION = "1";
 
     mapping(address => uint256[]) private nftsByOwner;
 
-    constructor() ERC721("Yara", "YToken") {
+    constructor() ERC721("Yara", "YToken") EIP712(SIGN_DOMAIN, SIGN_VERSION) {
         _setupRole(MINTER_ROLE, msg.sender);
-
         _setDefaultRoyalty(msg.sender, 10000);
     }
 
@@ -35,17 +47,45 @@ contract Nft is
         _;
     }
 
-    function mint(address tokenOwner, string memory _uri)
+    function mint(address tokenOwner, LazyNFT calldata metadata)
         public
         payable
-        onlyRole(MINTER_ROLE)
     {
+        address signer = _verify(metadata);
+
+        require(hasRole(MINTER_ROLE, signer), "Signer is not allowed to mint.");
+        require(msg.value == metadata.mintPrice, "Wrong attached balance.");
+
         uint256 tokenIndex = totalSupply();
 
-        _safeMint(tokenOwner, tokenIndex);
-        _setTokenURI(tokenIndex, _uri);
+        _safeMint(signer, tokenIndex);
+        _setTokenURI(tokenIndex, metadata.uri);
+        _transfer(signer, tokenOwner, tokenIndex);
 
         nftsByOwner[tokenOwner].push(tokenIndex);
+    }
+
+    function _hash(LazyNFT calldata metadata) internal view returns (bytes32) {
+        return
+            _hashTypedDataV4(
+                keccak256(
+                    abi.encode(
+                        keccak256("LazyNFT(uint256 mintPrice,string uri)"),
+                        metadata.mintPrice,
+                        keccak256(bytes(metadata.uri))
+                    )
+                )
+            );
+    }
+
+    function _verify(LazyNFT calldata metadata)
+        internal
+        view
+        returns (address)
+    {
+        bytes32 digest = _hash(metadata);
+
+        return ECDSA.recover(digest, metadata.signature);
     }
 
     function burn(uint256 tokenId) public {
