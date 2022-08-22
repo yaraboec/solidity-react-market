@@ -35,8 +35,13 @@ describe("Nft contract", () => {
 
     it("Mint tokens should fail when called by not minter", async () => {
       await callFailedFunction(
-        NftContract.connect(user).mint(owner.address, tokenURI),
-        "AccessControl: account 0xfbd030ba82f68f0e64c279f97ca498f38ca24a77 is missing role 0x9f2df0fed2c77648de5860a4cc508cd0818c85b8b8a1ab4ceeef8d981c8956a6"
+        NftContract.mint(owner.address, {
+          mintPrice: ethers.utils.parseEther("0.00001"),
+          uri: "123",
+          signature:
+            "0x3a5a20cb8dfea56087c7a70ed3d57057e4f923332ab940c776dffbd243cf5883283bfb641410586793b23bc2bf382f369e02f3bc7af3c4b6e7ddd94d359f53151c",
+        }),
+        "Signer is not allowed to mint."
       );
     });
   });

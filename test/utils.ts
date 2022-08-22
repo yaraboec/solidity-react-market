@@ -1,10 +1,12 @@
 import { Nft } from "../typechain-types/contracts/Nft";
+import Minter from "../types/MInter";
+import { chainIds } from "./../hardhat.config";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
 export const tokenURI =
-  "ipfs://bafybeig37ioir76s7mg5oobetncojcm3c3hxasyd4rvid4jqhy4gkaheg4/?filename=0-PUG.json";
+  "ipfs://bafyreih5ubkjmdpzmf4b4daytguypkynrf4a336aswflreeab6s6etpsra/metadata.json";
 
 export const mintTokens = async (
   NftContract: Nft,
@@ -24,7 +26,16 @@ const getMintedTokenId = async (
   NftContract: Nft,
   owner: SignerWithAddress
 ) => {
-  const mintTx = await NftContract.mint(owner.address, tokenURI);
+  const minter = new Minter({ nftContract: NftContract });
+
+  const lazyNft = await minter.create(
+    ethers.utils.parseEther("0.00001"),
+    chainIds.hardhat
+  );
+
+  const mintTx = await NftContract.connect(owner).mint(owner.address, lazyNft, {
+    value: ethers.utils.parseEther("0.00001"),
+  });
 
   const mintTxReceipt = await mintTx.wait(1);
 

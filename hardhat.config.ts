@@ -24,6 +24,7 @@ export const chainIds = {
   localhost: 31337,
   hardhat: 31337,
   mainnet: 1,
+  goerli: 5,
 };
 
 const config: HardhatUserConfig = {

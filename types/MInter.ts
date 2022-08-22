@@ -14,7 +14,7 @@ export default class Minter {
     this.contract = nftContract;
   }
 
-  async create(mintPrice: ethers.BigNumber | number = 0) {
+  async create(mintPrice: ethers.BigNumber | number = 0, chainId: number) {
     const client = new NFTStorage({ token: process.env.NFT_STORAGE_KEY ?? "" });
 
     const image = await fileFromPath("scripts/test-pic.jpg");
@@ -28,7 +28,7 @@ export default class Minter {
     const wallet = new ethers.Wallet(process.env.GOERLI_PRIVATE_KEY ?? "");
 
     const value = { mintPrice, uri: metadata.url.toString() };
-    const domain = this.getDomain();
+    const domain = this.getDomain(chainId);
     const types = {
       LazyNFT: [
         { name: "mintPrice", type: "uint256" },
@@ -44,12 +44,12 @@ export default class Minter {
     };
   }
 
-  getDomain() {
+  getDomain(chainId: number) {
     return {
       name: SING_DOMAIN_NAME,
       version: SING_DOMAIN_VERSION,
       verifyingContract: this.contract.address,
-      chainId: 5,
+      chainId,
     };
   }
 }
