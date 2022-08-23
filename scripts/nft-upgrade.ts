@@ -1,6 +1,6 @@
 import { main1 } from "./utils";
 
-main1(process.env.NFT_ACCOUNT ?? "", "Nft")
+main1("Nft", "NFT_ACCOUNT")
   .then(() => process.exit(0))
   .catch((error) => {
     console.error(error);

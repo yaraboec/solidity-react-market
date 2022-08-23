@@ -1,6 +1,6 @@
 import { main } from "./utils";
 
-main("NftMarketplace", [])
+main("NftMarketplace", "MARKETPLACE_ACCOUNT")
   .then(() => process.exit(0))
   .catch((error) => {
     console.error(error);

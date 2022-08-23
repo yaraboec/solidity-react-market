@@ -1,6 +1,6 @@
 import { main } from "./utils";
 
-main("Nft", [])
+main("Nft", "NFT_ACCOUNT")
   .then(() => process.exit(0))
   .catch((error) => {
     console.error(error);
