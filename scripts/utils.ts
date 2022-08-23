@@ -1,6 +1,7 @@
 import { ethers, upgrades } from "hardhat";
+import dotenv from "dotenv";
 
-export async function main(contractName: string, envVar: string) {
+export async function main(contractName: string) {
   await getSigner();
 
   const Contract = await ethers.getContractFactory(contractName);
@@ -8,7 +9,8 @@ export async function main(contractName: string, envVar: string) {
 
   await contract.deployed();
 
-  process.env[envVar] = contract.address;
+  console.log(contract.address);
+
   console.log(`${contractName} address: ${contract.address}`);
 }
 
@@ -22,7 +24,6 @@ export async function main1(newContractName: string, envVar: string) {
     NewContractFactory
   );
 
-  process.env[envVar] = newContract.address;
   console.log(`${newContractName} address: ${newContract.address}`);
 }
 
