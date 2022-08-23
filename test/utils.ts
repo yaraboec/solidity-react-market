@@ -3,7 +3,7 @@ import Minter from "../types/MInter";
 import { chainIds } from "./../hardhat.config";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import { ethers, upgrades } from "hardhat";
 
 export const tokenURI =
   "ipfs://bafyreih5ubkjmdpzmf4b4daytguypkynrf4a336aswflreeab6s6etpsra/metadata.json";
@@ -29,8 +29,8 @@ const getMintedTokenId = async (
   const minter = new Minter({ nftContract: NftContract });
 
   const lazyNft = await minter.create(
-    ethers.utils.parseEther("0.00001"),
-    chainIds.hardhat
+    chainIds.hardhat,
+    ethers.utils.parseEther("0.00001")
   );
 
   const mintTx = await NftContract.connect(owner).mint(owner.address, lazyNft, {
@@ -47,7 +47,7 @@ const getMintedTokenId = async (
 export const deployContract = async (contractName: string): Promise<any> => {
   const ContractFactory = await ethers.getContractFactory(contractName);
 
-  return ContractFactory.deploy();
+  return upgrades.deployProxy(ContractFactory);
 };
 
 export const callFailedFunction = async (

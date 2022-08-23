@@ -14,7 +14,7 @@ export default class Minter {
     this.contract = nftContract;
   }
 
-  async create(mintPrice: ethers.BigNumber | number = 0, chainId: number) {
+  async create(chainId: number, mintPrice: ethers.BigNumber | number = 0) {
     const client = new NFTStorage({ token: process.env.NFT_STORAGE_KEY ?? "" });
 
     const image = await fileFromPath("scripts/test-pic.jpg");

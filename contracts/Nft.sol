@@ -1,24 +1,24 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
 
-import "hardhat/console.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/token/common/ERC2981.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/metatx/ERC2771Context.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/common/ERC2981Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
 import {removeArrayElement} from "./utils.sol";
 
 contract Nft is
-    ERC721,
-    ERC721Enumerable,
-    ERC721URIStorage,
-    ERC2981,
-    EIP712,
-    AccessControl
+    Initializable,
+    ERC721Upgradeable,
+    ERC721EnumerableUpgradeable,
+    ERC721URIStorageUpgradeable,
+    ERC2981Upgradeable,
+    EIP712Upgradeable,
+    AccessControlUpgradeable
 {
     struct Token {
         uint256 tokenId;
@@ -37,7 +37,10 @@ contract Nft is
 
     mapping(address => uint256[]) private nftsByOwner;
 
-    constructor() ERC721("Yara", "YToken") EIP712(SIGN_DOMAIN, SIGN_VERSION) {
+    function initialize() public initializer {
+        __ERC721_init("Yara", "YToken");
+        __EIP712_init(SIGN_DOMAIN, SIGN_VERSION);
+
         _setupRole(MINTER_ROLE, msg.sender);
         _setDefaultRoyalty(msg.sender, 10000);
     }
@@ -85,7 +88,7 @@ contract Nft is
     {
         bytes32 digest = _hash(metadata);
 
-        return ECDSA.recover(digest, metadata.signature);
+        return ECDSAUpgradeable.recover(digest, metadata.signature);
     }
 
     function burn(uint256 tokenId) public {
@@ -125,7 +128,7 @@ contract Nft is
     function tokenURI(uint256 tokenId)
         public
         view
-        override(ERC721, ERC721URIStorage)
+        override(ERC721Upgradeable, ERC721URIStorageUpgradeable)
         isExists(tokenId)
         returns (string memory)
     {
@@ -135,7 +138,12 @@ contract Nft is
     function supportsInterface(bytes4 interfaceId)
         public
         view
-        override(ERC721, ERC721Enumerable, AccessControl, ERC2981)
+        override(
+            ERC721Upgradeable,
+            ERC721EnumerableUpgradeable,
+            AccessControlUpgradeable,
+            ERC2981Upgradeable
+        )
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
@@ -145,13 +153,13 @@ contract Nft is
         address from,
         address to,
         uint256 tokenId
-    ) internal override(ERC721, ERC721Enumerable) {
+    ) internal override(ERC721Upgradeable, ERC721EnumerableUpgradeable) {
         super._beforeTokenTransfer(from, to, tokenId);
     }
 
     function _burn(uint256 tokenId)
         internal
-        override(ERC721, ERC721URIStorage)
+        override(ERC721Upgradeable, ERC721URIStorageUpgradeable)
     {
         super._burn(tokenId);
     }

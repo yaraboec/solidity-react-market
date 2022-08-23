@@ -51,7 +51,7 @@ describe("Nft contract", () => {
       tokensId = await callMintTokens();
 
       await callFailedFunction(
-        NftContract.connect(user).burn(tokensId[0]),
+        callBurnToken(owner, tokensId[0]),
         "Only owner of the token can burn it."
       );
     });
@@ -61,7 +61,7 @@ describe("Nft contract", () => {
 
       const tokenSupply = await NftContract.totalSupply();
 
-      await NftContract.burn(tokensId[0]);
+      await callBurnToken(user, tokensId[0]);
 
       expect(await NftContract.totalSupply()).to.equal(tokenSupply.sub(1));
 
@@ -72,7 +72,11 @@ describe("Nft contract", () => {
     });
   });
 
+  const callBurnToken = async (caller: SignerWithAddress, tokenId: string) => {
+    await NftContract.connect(caller).burn(tokenId);
+  };
+
   const callMintTokens = async () => {
-    return mintTokens(NftContract, owner);
+    return mintTokens(NftContract, user);
   };
 });

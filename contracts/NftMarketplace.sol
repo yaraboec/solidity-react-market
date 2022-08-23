@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
 
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import {removeArrayElement} from "./utils.sol";
 import {Auction} from "./Auction.sol";
 
-contract NftMarketplace is ReentrancyGuard {
-    using Counters for Counters.Counter;
+contract NftMarketplace is ReentrancyGuardUpgradeable {
+    using CountersUpgradeable for CountersUpgradeable.Counter;
 
     struct Sale {
         uint256 price;
@@ -35,7 +35,7 @@ contract NftMarketplace is ReentrancyGuard {
         uint256 tokenId
     );
 
-    Counters.Counter private _salesAmount;
+    CountersUpgradeable.Counter private _salesAmount;
     uint256[] saleIds;
     address[] auctions;
     mapping(uint256 => Sale) private sales;
@@ -57,7 +57,7 @@ contract NftMarketplace is ReentrancyGuard {
     }
 
     modifier isOwner(address nftAddress, uint256 tokenId) {
-        IERC721 nft = IERC721(nftAddress);
+        IERC721Upgradeable nft = IERC721Upgradeable(nftAddress);
         address owner = nft.ownerOf(tokenId);
 
         require(
@@ -90,7 +90,7 @@ contract NftMarketplace is ReentrancyGuard {
         isOwner(nftAddress, tokenId)
         NotZeroPrice(price)
     {
-        IERC721 nft = IERC721(nftAddress);
+        IERC721Upgradeable nft = IERC721Upgradeable(nftAddress);
 
         require(
             nft.getApproved(tokenId) == address(this),
@@ -163,7 +163,7 @@ contract NftMarketplace is ReentrancyGuard {
         removeArrayElement(tokenId, salesByOwner[msg.sender]);
         _salesAmount.decrement();
 
-        IERC721(nftAddress).safeTransferFrom(sale.seller, msg.sender, tokenId);
+        IERC721Upgradeable(nftAddress).safeTransferFrom(sale.seller, msg.sender, tokenId);
 
         (bool success, ) = payable(sale.seller).call{value: sale.price}("");
         require(success, "Transfer failed");
